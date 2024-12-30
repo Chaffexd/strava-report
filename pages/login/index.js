@@ -2,7 +2,7 @@ import React from "react";
 
 const LoginPage = () => {
   return (
-    <section className="w-full flex justify-center mt-40 items-center flex-col">
+    <section className="w-full flex justify-center mt-10 sm:mt-40 items-center flex-col p-4">
       <h1 className="text-2xl font-bold">Welcome to the Strava Report</h1>
       <p className="max-w-2xl my-10 bg-yellow-200 p-8 rounded-xl text-lg">
         The idea here is provide you with insights into your data similar to
@@ -16,7 +16,7 @@ const LoginPage = () => {
       </p>
       <a
         href="/api/auth/login"
-        className="bg-orange-500 text-white p-4 rounded-xl hover:bg-orange-400 font-bold"
+        className="bg-orange-500 text-white p-4 rounded-xl hover:bg-orange-400 font-bold mb-8"
       >
         Authenticate to access your Report ⚡️
       </a>

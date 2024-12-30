@@ -1,7 +1,6 @@
 import axios from "axios";
 import Info from "@/components/Info";
 import * as cookie from "cookie";
-import { Scatter } from "react-chartjs-2";
 import {
   Chart as ChartJS,
   Title,
@@ -10,9 +9,16 @@ import {
   LinearScale,
   PointElement,
   LineElement,
+  CategoryScale,
+  Filler,
 } from "chart.js";
 import Summary from "@/components/Summary";
 import Error from "@/components/Error";
+import { formatMovingTime } from "@/components/Summary";
+import BestEffortCharts from "@/components/BestEffortCharts";
+import YearlyEffortsChart from "@/components/YearlyEffortsChart";
+import RunningTimesChart from "@/components/RunningTimesChart";
+import AiReport from "@/components/AiReport";
 
 ChartJS.register(
   Title,
@@ -20,99 +26,54 @@ ChartJS.register(
   Legend,
   LinearScale,
   PointElement,
-  LineElement
+  LineElement,
+  CategoryScale,
+  Filler
 );
 
-export default function Home({ stats, bestEfforts, error, currentUser }) {
+export default function Home({
+  stats,
+  bestEfforts,
+  error,
+  currentUser,
+  weeklyData,
+  timeCategories,
+}) {
   if (error) {
-    return (
-      <Error error={error} />
-    );
+    return <Error error={error} />;
   }
 
   const { ytd_run_totals } = stats;
-  console.log("BEST EFFORTS =", bestEfforts);
+  /*   console.log("BEST EFFORTS in component =", bestEfforts);
   console.log("Current user =", currentUser);
+  console.log("Stats =", stats);
+  console.log("weekly data in component", weeklyData);
+  console.log("timeCategories", timeCategories); */
   const { firstname, lastname, city, state } = currentUser;
   const fullName = `${firstname} ${lastname}`;
 
-  const getScatterData = (effort) => {
-    if (!effort.activity?.splits_metric) return [];
-    return effort.activity.splits_metric.map((split, index) => ({
-      x: (index + 1) * 1000, // Distance in meters
-      y: ((split.moving_time / split.distance) * 1000) / 60, // Pace in min/km
-    }));
-  };
-
   return (
-    <section className="m-auto w-full flex justify-center flex-col items-center mt-24 max-w-screen-xl text-lg">
+    <section className="m-auto w-full flex justify-center flex-col items-center p-4 sm:p-0 sm:mt-24 max-w-screen-xl text-lg ">
       <Info userName={fullName} city={city} state={state} />
       <Summary ytd_run_totals={ytd_run_totals} />
-      <div className="w-full mt-10">
-        <div className="border-2 border-orange-500 h-40 w-full rounded-xl p-4 flex items-center text-lg">
-          <p>Best Efforts</p>
+      <div className="w-full mt-10 ">
+        <div className="border-2 border-orange-500 w-full sm:h-auto h-auto rounded-xl p-4 flex items-center flex-col text-lg">
+          <p>Efforts over the year</p>
+          <YearlyEffortsChart weeklyData={weeklyData} />
         </div>
-        <div className="w-full border-orange-500 h-40 flex flex-wrap mt-10 gap-4 justify-between">
-          {Object.entries(bestEfforts).map(([distance, effort]) => {
-            const scatterData = getScatterData(effort);
-
-            return (
-              <div
-                key={distance}
-                className="border-2 border-orange-500 rounded-xl p-4 flex flex-col items-center justify-center w-[48%] min-h-80"
-              >
-                <p className="text-orange-500 font-bold">{distance}</p>
-                <p>{effort.formattedTime || "Get Running..."}</p>
-                {scatterData.length > 0 ? (
-                  <Scatter
-                    data={{
-                      datasets: [
-                        {
-                          label: `${distance} Splits`,
-                          data: scatterData,
-                          backgroundColor: "orange",
-                          showLine: true,
-                          borderColor: "orange",
-                          borderWidth: 2,
-                          pointRadius: 4,
-                          pointHoverRadius: 6,
-                        },
-                      ],
-                    }}
-                    options={{
-                      scales: {
-                        x: {
-                          type: "linear",
-                          title: { display: true, text: "Distance (km)" },
-                          ticks: {
-                            callback: (value) => `${value / 1000} km`, // Format x-axis ticks as km
-                          },
-                        },
-                        y: {
-                          title: { display: true, text: "Pace (min/km)" },
-                        },
-                      },
-                      plugins: {
-                        tooltip: {
-                          callbacks: {
-                            label: function (context) {
-                              const xValue = context.raw.x / 1000; // Convert meters to kilometers
-                              const yValue = context.raw.y; // Pace in min/km
-                              return `Distance: ${xValue.toFixed(
-                                1
-                              )} km, Pace: ${yValue.toFixed(2)} min/km`;
-                            },
-                          },
-                        },
-                      },
-                    }}
-                  />
-                ) : (
-                  <p className="text-sm">No splits data available.</p>
-                )}
-              </div>
-            );
-          })}
+        <div className="w-full border-orange-500 flex flex-wrap my-10 gap-4 my-justify-between">
+          <BestEffortCharts bestEfforts={bestEfforts} />
+        </div>
+        <div>
+          <RunningTimesChart runningTimes={timeCategories} />
+        </div>
+        <div>
+          <AiReport
+            stats={stats}
+            bestEfforts={bestEfforts}
+            currentUser={currentUser}
+            timeCategories={timeCategories}
+          />
         </div>
       </div>
     </section>
@@ -122,12 +83,14 @@ export default function Home({ stats, bestEfforts, error, currentUser }) {
 export async function getServerSideProps({ req }) {
   const cookies = cookie.parse(req.headers.cookie || "");
   const accessToken = cookies.access_token;
-  const athleteId = cookies.athlete_id;
+
+  console.log("Request headers:", req.headers);
+  console.log("Request cookies:", cookie.parse(req.headers.cookie || ""));
 
   if (!accessToken) {
     return {
       redirect: {
-        destination: "/api/auth/login",
+        destination: "/login",
         permanent: false,
       },
     };
@@ -155,10 +118,18 @@ export async function getServerSideProps({ req }) {
     Marathon: 42195,
   };
 
+  const timeCategories = {
+    morning: 0,
+    afternoon: 0,
+    evening: 0,
+  };
+
   const bestEfforts = {};
   for (const key in targetDistances) {
     bestEfforts[key] = { time: Infinity, activity: null };
   }
+
+  const weeklyDistances = {};
 
   try {
     const authenticatedUserResponse = await axios.get(authenticatedUserUrl, {
@@ -191,36 +162,69 @@ export async function getServerSideProps({ req }) {
         (activity) => activity.type === "Run"
       );
       runs.push(...runningActivities);
-    }
 
-    for (const run of runs) {
-      const distance = run.distance; // in meters
-      const movingTime = run.moving_time; // in seconds
+      runningActivities.forEach((run) => {
+        const startTime = new Date(run.start_date);
+        const hour = startTime.getUTCHours();
 
-      for (const [label, targetDistance] of Object.entries(targetDistances)) {
-        if (
-          distance >= targetDistance * 0.95 &&
-          distance <= targetDistance * 1.05 &&
-          movingTime < bestEfforts[label].time
-        ) {
-          const activityDetailsResponse = await axios.get(
-            activityDetailsUrl(run.id),
-            {
-              headers: {
-                Authorization: `Bearer ${accessToken}`,
-              },
-            }
-          );
-          const activityDetails = activityDetailsResponse.data;
+        if (hour >= 0 && hour < 12) {
+          timeCategories.morning++;
+        } else if (hour >= 12 && hour <= 18) {
+          timeCategories.afternoon++;
+        } else {
+          timeCategories.evening++;
+        }
+      });
 
-          bestEfforts[label] = {
-            time: movingTime,
-            formattedTime: formatMovingTime(movingTime),
-            activity: activityDetails,
-          };
+      for (const run of runs) {
+        const distance = run.distance; // in meters
+        const movingTime = run.moving_time; // in seconds
+
+        for (const [label, targetDistance] of Object.entries(targetDistances)) {
+          if (
+            distance >= targetDistance * 0.95 &&
+            distance <= targetDistance * 1.05 &&
+            movingTime < bestEfforts[label].time
+          ) {
+            const activityDetailsResponse = await axios.get(
+              activityDetailsUrl(run.id),
+              {
+                headers: {
+                  Authorization: `Bearer ${accessToken}`,
+                },
+              }
+            );
+            const activityDetails = activityDetailsResponse.data;
+
+            bestEfforts[label] = {
+              time: movingTime,
+              formattedTime: formatMovingTime(movingTime),
+              activity: activityDetails,
+            };
+          }
         }
       }
+
+      runningActivities.forEach((run) => {
+        const weekStart = new Date(run.start_date);
+        weekStart.setUTCHours(0, 0, 0, 0);
+
+        // Adjust the day so Monday is the start of the week
+        const day = weekStart.getDay();
+        const diff = (day === 0 ? -6 : 1) - day; // If Sunday (0), move back 6 days; otherwise, adjust to Monday (1)
+        weekStart.setDate(weekStart.getDate() + diff);
+
+        const weekKey = weekStart.toISOString().split("T")[0];
+        if (!weeklyDistances[weekKey]) {
+          weeklyDistances[weekKey] = 0;
+        }
+        weeklyDistances[weekKey] += run.distance; // Add distance in meters
+      });
     }
+
+    const weeklyData = Object.entries(weeklyDistances)
+      .map(([weekStart, totalDistance]) => ({ weekStart, totalDistance }))
+      .sort((a, b) => new Date(a.weekStart) - new Date(b.weekStart));
 
     return {
       props: {
@@ -237,6 +241,8 @@ export async function getServerSideProps({ req }) {
           },
         },
         bestEfforts,
+        weeklyData,
+        timeCategories,
       },
     };
   } catch (error) {

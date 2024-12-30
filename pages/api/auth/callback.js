@@ -8,8 +8,8 @@ export default async function handler(req, res) {
   const cookies = cookie.parse(req.headers.cookie || "");
   const savedState = cookies.oauth_state;
 
-  console.log("State from query:", state);
-  console.log("State from cookie:", savedState);
+/*   console.log("State from query:", state);
+  console.log("State from cookie:", savedState); */
 
   if (!state || state !== savedState) {
     return res
