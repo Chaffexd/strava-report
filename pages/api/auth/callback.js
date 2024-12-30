@@ -63,8 +63,8 @@ export default async function handler(req, res) {
       }),
     ]);
 
-    // Redirect the user
-    res.redirect("/");
+    // Redirect the user to root
+    res.redirect(302, "/");
   } catch (error) {
     console.error(
       "Error exchanging authorization code:",

@@ -84,8 +84,11 @@ export async function getServerSideProps({ req }) {
   const cookies = cookie.parse(req.headers.cookie || "");
   const accessToken = cookies.access_token;
 
-  console.log("Request headers:", req.headers);
+ /*  console.log("Request headers:", req.headers);
   console.log("Request cookies:", cookie.parse(req.headers.cookie || ""));
+  console.log("Has accessToken", accessToken) */
+
+  await new Promise((resolve) => setTimeout(resolve, 500));
 
   if (!accessToken) {
     return {
