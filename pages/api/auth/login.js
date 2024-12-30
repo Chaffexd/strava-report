@@ -5,8 +5,6 @@ export default function handler(req, res) {
 
   // random UUID for state value in URL
   const state = crypto.randomBytes(16).toString("hex");
-
-  console.log("Generated state:", state);
   // store state in a cookie
   const isProduction = process.env.NODE_ENV === "production";
   console.log("is prod?", isProduction)
