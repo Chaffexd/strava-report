@@ -40,7 +40,7 @@ const MostRecentRunAiReport = ({ mostRecentRun }) => {
 
       Heart rate: ${mostRecentRun.average_heartrate} bpm
 
-      Generate a motivational and actionable report focusing on this run's performance and areas for improvement.
+      Generate a motivational and actionable report focusing on this run's performance and areas for improvement but make sure you keep it short and sweet based on the data you have available.
     `;
 
     try {
