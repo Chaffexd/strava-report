@@ -129,7 +129,7 @@ export default function Home({
   );
 }
 
-export async function getServerSideProps({ req, query }) {
+export async function getServerSideProps({ req, query, res }) {
   const cookies = cookie.parse(req.headers.cookie || "");
   const accessToken = cookies.access_token;
 
@@ -316,8 +316,27 @@ export async function getServerSideProps({ req, query }) {
     };
   } catch (error) {
     console.error("Error fetching data from Strava:", error.message);
+    console.log("Context in server side props =", res)
+
+    const cookiesToClear = [
+      "access_token",
+      "athlete",
+      "athlete_id",
+      "oauth_state",
+      "refresh_token",
+    ];
+
+    // if you set cookies to a previous date it will clear them
+    res.setHeader(
+      "Set-Cookie",
+      cookiesToClear.map((name) => `${name}=; Path=/; HttpOnly; Max-Age=0`)
+    );
+
     return {
-      props: { error: error.message },
+      redirect: {
+        destination: "/login",
+        permanent: false,
+      },
     };
   }
 }
